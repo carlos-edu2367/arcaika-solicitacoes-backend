@@ -1,5 +1,5 @@
 from domain.entities.locais import Local
-from domain.entities.solicitacao import Solicitacao
+from domain.entities.solicitacao import Solicitacao, Status
 from application.providers.hash import HashProvider
 from application.providers.repo import UserRepo, UOWProvider, SolicitacaoRepo, LocalRepo
 from application.dtos import solicitacao
@@ -36,4 +36,9 @@ class SolicitacaoService():
         await self.uow.commit()
         return new
     
-    
+    async def update_status(self, solicitacao_id: UUID, status: Status):
+        solicitacao = await self.solicitacao_repo.get_by_id(solicitacao_id)
+        solicitacao.status = status
+        await self.solicitacao_repo.save(solicitacao)
+        await self.uow.commit()
+        return

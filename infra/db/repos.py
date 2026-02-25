@@ -1,7 +1,7 @@
 from application.providers import repo
 from domain.entities.user import User as UserDomain, Roles
 from domain.entities.locais import Local as LocalDomain
-from domain.entities.solicitacao import Solicitacao as SolicitacaoDomain
+from domain.entities.solicitacao import Solicitacao as SolicitacaoDomain, Status
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -160,6 +160,36 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         stmt = (
             select(SolicitacaoORM)
             .where(SolicitacaoORM.local_id == local_id)
+            .order_by(SolicitacaoORM.created_date.desc())  
+            .limit(limit)
+            .offset(offset)
+        )
+
+        result = await self.session.execute(stmt)
+        solicitacoes = result.scalars().all()
+
+        return [
+            SolicitacaoDisplay(
+                id=s.id,
+                local_id=s.local_id,
+                assunto=s.assunto,
+                nome=s.nome,
+                email=s.email,
+                telefone=s.telefone,
+                descricao=s.descricao,
+                prioridade=s.prioridade,
+                nome_da_unidade = s.nome_da_unidade,
+                ordem_de_servico = s.ordem_servico,
+                informacoes_adicionais=s.informacoes_adicionais,
+            )
+            for s in solicitacoes
+        ]
+    
+    async def get_by_status(self, status: Status, limit: int = 10,
+                            offset: int = 0) -> list[SolicitacaoDisplay]:
+        stmt = (
+            select(SolicitacaoORM)
+            .where(SolicitacaoORM.status == status.value)
             .order_by(SolicitacaoORM.created_date.desc())  
             .limit(limit)
             .offset(offset)

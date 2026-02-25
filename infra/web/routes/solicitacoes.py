@@ -96,3 +96,28 @@ async def anexar_arquivo(file: UploadFile,
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao tentar enviar arquivo ao supabase: {e}")
 
+@router.put("/local/solicitacao/status", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+async def update_status(solicitacao_id: UUID,
+                        new_status: str,
+                        service: SolicitacaoService = Depends(get_solicitacao_service),
+                        current_user: UserDomain = Depends(get_current_user)):
+    if current_user.role != Roles.ADMIN.value:
+        raise HTTPException(status_code=403, detail="Usuário não autorizado")
+    if new_status not in ["criado", "em_andamento", "concluido"]:
+        raise HTTPException(status_code=400, detail="Status inválido")
+    await service.update_status(solicitacao_id=solicitacao_id, status=new_status)
+    return
+
+@router.get("/solicitacoes/status", dependencies=[Depends(RateLimiter(times=25, seconds=60))])
+async def get_solicitacoes_por_status(status: str, 
+                                      page: int, 
+                                      limit: int,
+                                      current_user: UserDomain = Depends(get_current_user),
+                                      service: SolicitacaoService = Depends(get_solicitacao_service)) -> list[SolicitacaoDisplay]:
+    if current_user.role != Roles.ADMIN.value:
+        raise HTTPException(status_code=403, detail="Usuário não autorizado")
+    if status not in ["criado", "em_andamento", "concluido"]:
+        raise HTTPException(status_code=400, detail="Status inválido")
+    offset = (page-1)*limit
+    response = await service.solicitacao_repo.get_by_status(status, limit, offset)
+    return response

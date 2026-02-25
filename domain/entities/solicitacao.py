@@ -9,7 +9,8 @@ class Prioridade(Enum):
 
 class Status(Enum):
     CRIADO = "criado"
-    EM_CONTATO = "em_contato"
+    EM_ANDAMENTO = "em_andamento"
+    CONCLUIDO = "concluido"
 
 class Solicitacao():
     def __init__(self, local: Local, 

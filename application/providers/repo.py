@@ -54,6 +54,11 @@ class SolicitacaoRepo(ABC):
         pass
 
     @abstractmethod
+    async def get_by_status(self, status: solicitacao.Status, limit: int = 10,
+                            offset: int = 0) -> list[SolicitacaoDisplay]:
+        pass
+
+    @abstractmethod
     async def save(self, solicitacao: solicitacao.Solicitacao):
         pass
 
