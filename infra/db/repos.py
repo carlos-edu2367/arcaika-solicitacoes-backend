@@ -188,15 +188,15 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
     async def save(self, solicitacao: SolicitacaoDomain) -> SolicitacaoDomain:
         if not solicitacao.id:
             new = SolicitacaoORM(local_id = solicitacao.local.id,
-                                 nome = solicitacao.nome,
-                                 assunto = solicitacao.assunto,
+                                 nome = solicitacao.nome.upper(),
+                                 assunto = solicitacao.assunto.upper(),
                                  email = solicitacao.email,
                                  telefone = solicitacao.telefone,
                                  descricao = solicitacao.descricao,
                                  prioridade = solicitacao.prioridade.value,
                                  informacoes_adicionais = solicitacao.informacoes_adicionais,
                                  status = solicitacao.status.value,
-                                 nome_da_unidade = solicitacao.nome_da_unidade)
+                                 nome_da_unidade = solicitacao.nome_da_unidade.upper())
             self.session.add(new)
             await self.session.flush()
             await self.session.refresh(new, ["local"]) 
@@ -210,14 +210,14 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
             raise HTTPException(status_code=404, detail="Solicitação não encontrada")
         
         solic.local_id = solicitacao.local.id
-        solic.nome = solicitacao.nome
+        solic.nome = solicitacao.nome.upper()
         solic.email = solicitacao.email
-        solic.assunto = solicitacao.assunto
+        solic.assunto = solicitacao.assunto.upper()
         solic.telefone = solicitacao.telefone
         solic.prioridade = solicitacao.prioridade.value
         solic.informacoes_adicionais = solicitacao.informacoes_adicionais
         solic.status = solicitacao.status.value
-        solic.nome_da_unidade = solicitacao.nome_da_unidade
+        solic.nome_da_unidade = solicitacao.nome_da_unidade.upper()
         await self.session.flush()
         await self.session.refresh(solic, ["local"])
         return solic.to_domain()
