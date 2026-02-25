@@ -204,197 +204,282 @@ class EmailProvider:
 
     def _gerar_pdf_solicitacao(self, solicitacao: Solicitacao) -> bytes:
         import io
+        import os
+        from datetime import datetime
         from reportlab.platypus import (
             SimpleDocTemplate, Paragraph, Spacer,
-            Table, TableStyle, HRFlowable
+            Table, TableStyle, HRFlowable, Image
         )
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.units import mm
-        from reportlab.lib.enums import TA_LEFT, TA_RIGHT
-        from reportlab.pdfbase.ttfonts import TTFont
-        from reportlab.pdfbase import pdfmetrics
+        from reportlab.lib.enums import TA_LEFT, TA_RIGHT, TA_CENTER
+        from reportlab.lib.utils import ImageReader
 
         buffer = io.BytesIO()
 
+        # Margens otimizadas para dar largura de 180mm para o conteúdo (A4 = 210x297)
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=30,
-            leftMargin=30,
-            topMargin=30,
-            bottomMargin=30
+            rightMargin=15*mm,
+            leftMargin=15*mm,
+            topMargin=15*mm,
+            bottomMargin=15*mm
         )
 
         elements = []
         styles = getSampleStyleSheet()
 
-        # 🎨 Paleta moderna
+        # =========================
+        # 🎨 Paleta Moderna Frontend
+        # =========================
         COR_LARANJA = colors.HexColor("#F97316")
+        COR_LARANJA_ESCURO = colors.HexColor("#EA580C")
         COR_PRETO = colors.HexColor("#111827")
-        COR_CINZA_TEXTO = colors.HexColor("#374151")
-        COR_CINZA_SUAVE = colors.HexColor("#F3F4F6")
-        COR_DIVISOR = colors.HexColor("#E5E7EB")
+        COR_CINZA_ESCURO = colors.HexColor("#374151")
+        COR_CINZA_MEDIO = colors.HexColor("#4B5563")
+        COR_CINZA_LABEL = colors.HexColor("#6B7280")
+        COR_CINZA_CLARO = colors.HexColor("#F9FAFB")
+        COR_BORDA = colors.HexColor("#E5E7EB")
+        COR_BORDA_CLARA = colors.HexColor("#F3F4F6")
         COR_BRANCA = colors.white
 
         # =========================
         # ESTILOS
         # =========================
+        style_company = ParagraphStyle('Company', parent=styles['Normal'], fontSize=9, textColor=COR_CINZA_MEDIO, alignment=TA_RIGHT, leading=12)
+        style_os_title = ParagraphStyle('OSTitle', parent=styles['Normal'], fontSize=16, textColor=COR_BRANCA, fontName="Helvetica-Bold")
+        style_os_date = ParagraphStyle('OSDate', parent=styles['Normal'], fontSize=10, textColor=COR_BRANCA, alignment=TA_RIGHT)
 
-        style_header = ParagraphStyle(
-            'HeaderTitle',
-            parent=styles['Heading1'],
-            fontSize=20,
-            textColor=COR_BRANCA,
-            fontName="Helvetica-Bold",
-            spaceAfter=0
-        )
+        style_card_title = ParagraphStyle('CardTitle', parent=styles['Normal'], fontSize=10, textColor=COR_LARANJA_ESCURO, fontName="Helvetica-Bold", textTransform="uppercase")
+        style_label = ParagraphStyle('Label', parent=styles['Normal'], fontSize=8, textColor=COR_CINZA_LABEL, fontName="Helvetica-Bold", textTransform="uppercase", spaceBottom=2)
+        style_value = ParagraphStyle('Value', parent=styles['Normal'], fontSize=11, textColor=COR_PRETO, fontName="Helvetica-Bold", spaceBottom=8)
+        
+        style_desc_title = ParagraphStyle('DescTitle', parent=styles['Normal'], fontSize=9, textColor=COR_CINZA_MEDIO, fontName="Helvetica-Bold", textTransform="uppercase", spaceBottom=4)
+        style_desc_text = ParagraphStyle('DescText', parent=styles['Normal'], fontSize=10, textColor=COR_CINZA_ESCURO, leading=14)
+        
+        style_footer = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor("#9CA3AF"), alignment=TA_CENTER, leading=10)
 
-        style_os = ParagraphStyle(
-            'OSNumber',
-            parent=styles['Normal'],
-            fontSize=14,
-            textColor=COR_BRANCA,
-            alignment=TA_RIGHT,
-            fontName="Helvetica-Bold"
-        )
+        # Dados da Solicitação
+        os_text = str(solicitacao.ordem_servico).zfill(4)
+        data_hora_atual = datetime.now()
 
-        style_section_title = ParagraphStyle(
-            'SectionTitle',
-            parent=styles['Heading2'],
-            fontSize=12,
-            textColor=COR_PRETO,
-            fontName="Helvetica-Bold",
-            spaceAfter=8,
-            spaceBefore=15
-        )
-
-        style_label = ParagraphStyle(
-            'LabelStyle',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=COR_CINZA_TEXTO,
-            fontName="Helvetica-Bold"
-        )
-
-        style_value = ParagraphStyle(
-            'ValueStyle',
-            parent=styles['Normal'],
-            fontSize=10,
-            textColor=COR_PRETO,
-            leading=14
-        )
+        local_nome = getattr(solicitacao.local, 'nome', 'Não informado')
+        local_cidade = getattr(solicitacao.local, 'cidade', '-')
+        local_estado = getattr(solicitacao.local, 'estado', '-')
+        unidade_nome = getattr(solicitacao, 'nome_da_unidade', 'NÃO INFORMADO')
+        if not unidade_nome: unidade_nome = 'NÃO INFORMADO'
 
         # =========================
-        # HEADER PREMIUM
+        # 1. CABEÇALHO (LOGO E INFO)
         # =========================
+        logo_path = os.path.join(os.getcwd(), 'assets', 'logo.png')
+        if os.path.exists(logo_path):
+            try:
+                img_reader = ImageReader(logo_path)
+                iw, ih = img_reader.getSize()
+                aspect = ih / float(iw)
+                target_width = 50 * mm
+                target_height = target_width * aspect
+                if target_height > 20 * mm:  # Limitando altura máxima
+                    target_height = 20 * mm
+                    target_width = target_height / aspect
 
-        os_text = str(solicitacao.ordem_servico)
-        if not os_text.upper().startswith("OS"):
-            os_text = f"OS-{os_text}"
+                logo = Image(logo_path, width=target_width, height=target_height)
+                logo.hAlign = 'LEFT'
+            except Exception:
+                logo = Paragraph("<b>ARCAIKA ENGENHARIA</b>", style_value)
+        else:
+            logo = Paragraph("<b>ARCAIKA ENGENHARIA</b>", style_value)
 
-        header_table = Table(
-            [[
-                Paragraph("ORDEM DE SERVIÇO", style_header),
-                Paragraph(os_text, style_os)
-            ]],
-            colWidths=[260, 255]
-        )
+        company_info = """<font color="#111827"><b>ARCAIKA ENGENHARIA LTDA</b></font><br/>
+        CNPJ: 42.907.720/0001-85<br/>
+        Al. Botafogo, 174 - Qd 77, L 11 - St. Central<br/>
+        Goiânia - GO, 74030-020<br/>
+        Tel: (62) 99616-4188"""
 
+        header_table = Table([[logo, Paragraph(company_info, style_company)]], colWidths=[90*mm, 90*mm])
         header_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, -1), COR_LARANJA),
-            ('LEFTPADDING', (0, 0), (-1, -1), 15),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 15),
-            ('TOPPADDING', (0, 0), (-1, -1), 18),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 18),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(header_table)
+        elements.append(HRFlowable(width="100%", thickness=2, color=COR_LARANJA, spaceBefore=0, spaceAfter=15))
+
+        # =========================
+        # 2. TÍTULO ORDEM DE SERVIÇO
+        # =========================
+        title_table = Table([[
+            Paragraph(f"ORDEM DE SERVIÇO #{os_text}", style_os_title),
+            Paragraph(f"<b>Data:</b> {data_hora_atual.strftime('%d/%m/%Y')}", style_os_date)
+        ]], colWidths=[120*mm, 60*mm])
+        title_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), COR_LARANJA),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (0, 0), 15),
+            ('RIGHTPADDING', (1, 0), (1, 0), 15),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        elements.append(title_table)
+        elements.append(Spacer(1, 15))
+
+        # =========================
+        # 3. SEÇÃO 1 E 2 (LADO A LADO)
+        # =========================
+        
+        # Bloco Esquerdo (Local)
+        local_elements = [
+            Paragraph("LOCAL", style_card_title),
+            HRFlowable(width="100%", thickness=1, color=COR_BORDA, spaceBefore=4, spaceAfter=8),
+            Paragraph("SECRETARIA", style_label),
+            Paragraph(str(local_nome).upper(), style_value),
+            Paragraph("CIDADE / UF", style_label),
+            Paragraph(f"{str(local_cidade).upper()} - {str(local_estado).upper()}", style_value),
+            Paragraph("UNIDADE / SETOR", style_label),
+            Paragraph(str(unidade_nome).upper(), style_value),
+        ]
+        
+        # Bloco Direito (Solicitante)
+        solicitante_elements = [
+            Paragraph("SOLICITANTE", style_card_title),
+            HRFlowable(width="100%", thickness=1, color=COR_BORDA, spaceBefore=4, spaceAfter=8),
+            Paragraph("NOME COMPLETO", style_label),
+            Paragraph(str(solicitacao.nome).upper(), style_value),
+            Paragraph("E-MAIL", style_label),
+            Paragraph(str(solicitacao.email), style_value),
+            Paragraph("TELEFONE", style_label),
+            Paragraph(str(solicitacao.telefone), style_value),
+        ]
+
+        card_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), COR_CINZA_CLARO),
+            ('BOX', (0, 0), (-1, -1), 1, COR_BORDA),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ])
+
+        card_local = Table([[local_elements]], colWidths=[88*mm])
+        card_local.setStyle(card_style)
+
+        card_solicitante = Table([[solicitante_elements]], colWidths=[88*mm])
+        card_solicitante.setStyle(card_style)
+
+        cards_table = Table([[card_local, '', card_solicitante]], colWidths=[88*mm, 4*mm, 88*mm])
+        cards_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+        ]))
+        elements.append(cards_table)
+        elements.append(Spacer(1, 15))
+
+        # =========================
+        # 4. SEÇÃO 3 (DETALHES DA SOLICITAÇÃO)
+        # =========================
+        
+        # Trata as cores da Prioridade
+        pri_text = str(solicitacao.prioridade).upper()
+        if pri_text == 'ALTA':
+            cor_pri_text = colors.HexColor("#DC2626")
+            cor_pri_bg = colors.HexColor("#FEF2F2")
+        elif pri_text in ['MÉDIA', 'MEDIA']:
+            cor_pri_text = colors.HexColor("#D97706")
+            cor_pri_bg = colors.HexColor("#FFFBEB")
+        else:
+            cor_pri_text = colors.HexColor("#16A34A")
+            cor_pri_bg = colors.HexColor("#F0FDF4")
+            
+        style_pri = ParagraphStyle('Pri', parent=styles['Normal'], fontSize=10, textColor=cor_pri_text, fontName="Helvetica-Bold", alignment=TA_CENTER)
+        
+        prioridade_t = Table([[Paragraph(pri_text, style_pri)]], colWidths=[35*mm])
+        prioridade_t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), cor_pri_bg),
+            ('BOX', (0, 0), (-1, -1), 1, cor_pri_text),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ]))
 
-        elements.append(header_table)
+        assunto_prioridade = Table([[
+            [Paragraph("ASSUNTO", style_label), Paragraph(str(solicitacao.assunto).upper(), style_value)],
+            [Paragraph("PRIORIDADE", ParagraphStyle('PriL', parent=style_label, alignment=TA_RIGHT)), prioridade_t]
+        ]], colWidths=[110*mm, 40*mm])
+        assunto_prioridade.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (1, 0), (1, 0), 'RIGHT'),
+        ]))
+
+        # Container da Descrição
+        desc_texto = str(solicitacao.descricao).replace('\n', '<br/>')
+        desc_t = Table([[Paragraph(desc_texto, style_desc_text)]], colWidths=[150*mm])
+        desc_t.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), COR_CINZA_CLARO),
+            ('BOX', (0, 0), (-1, -1), 1, COR_BORDA_CLARA),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+        ]))
+
+        detalhes_elements = [
+            Paragraph("DETALHES DA SOLICITAÇÃO", style_card_title),
+            HRFlowable(width="100%", thickness=2, color=COR_BORDA_CLARA, spaceBefore=6, spaceAfter=10),
+            assunto_prioridade,
+            Spacer(1, 10),
+            Paragraph("DESCRIÇÃO DO PROBLEMA / SERVIÇO", style_desc_title),
+            HRFlowable(width="100%", thickness=1, color=COR_BORDA_CLARA, spaceBefore=2, spaceAfter=6),
+            desc_t,
+        ]
+
+        # Container opcional de Informações Adicionais (Amarelo)
+        if solicitacao.informacoes_adicionais:
+            info_texto = str(solicitacao.informacoes_adicionais).replace('\n', '<br/>')
+            info_t = Table([[Paragraph(info_texto, style_desc_text)]], colWidths=[150*mm])
+            info_t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor("#FFFBEB")),
+                ('BOX', (0, 0), (-1, -1), 1, colors.HexColor("#FEF3C7")),
+                ('TOPPADDING', (0, 0), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+                ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ]))
+            detalhes_elements.append(Spacer(1, 15))
+            detalhes_elements.append(Paragraph("INFORMAÇÕES ADICIONAIS", style_desc_title))
+            detalhes_elements.append(HRFlowable(width="100%", thickness=1, color=COR_BORDA_CLARA, spaceBefore=2, spaceAfter=6))
+            detalhes_elements.append(info_t)
+
+        detalhes_card = Table([[detalhes_elements]], colWidths=[180*mm])
+        detalhes_card.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), COR_BRANCA),
+            ('BOX', (0, 0), (-1, -1), 1, COR_BORDA),
+            ('TOPPADDING', (0, 0), (-1, -1), 15),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+            ('LEFTPADDING', (0, 0), (-1, -1), 15),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        
+        elements.append(detalhes_card)
         elements.append(Spacer(1, 25))
 
         # =========================
-        # FUNÇÃO PARA CRIAR "CARDS"
+        # 5. RODAPÉ
         # =========================
+        elements.append(HRFlowable(width="100%", thickness=1, color=COR_BORDA, spaceBefore=0, spaceAfter=10))
+        elements.append(Paragraph(
+            f"Documento gerado eletronicamente pelo Sistema de Solicitações Arcaika Engenharia.<br/>"
+            f"Gerado em {data_hora_atual.strftime('%d/%m/%Y')} às {data_hora_atual.strftime('%H:%M:%S')}.",
+            style_footer
+        ))
 
-        def criar_secao(titulo, campos):
-
-            elements.append(Paragraph(titulo, style_section_title))
-            elements.append(HRFlowable(
-                width="100%",
-                thickness=1,
-                color=COR_DIVISOR,
-                spaceBefore=2,
-                spaceAfter=10
-            ))
-
-            dados_formatados = []
-
-            for label, valor in campos:
-                dados_formatados.append([
-                    Paragraph(label.upper(), style_label),
-                    Paragraph(str(valor), style_value)
-                ])
-
-            tabela = Table(dados_formatados, colWidths=[120, 395])
-
-            tabela.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, -1), COR_BRANCA),
-                ('INNERGRID', (0, 0), (-1, -1), 0.25, COR_DIVISOR),
-                ('BOX', (0, 0), (-1, -1), 0.5, COR_DIVISOR),
-                ('LEFTPADDING', (0, 0), (-1, -1), 12),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-                ('TOPPADDING', (0, 0), (-1, -1), 10),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ]))
-
-            elements.append(tabela)
-            elements.append(Spacer(1, 15))
-
-        # =========================
-        # SEÇÃO 1
-        # =========================
-
-        criar_secao("Detalhes da Solicitação", [
-            ("Assunto", solicitacao.assunto),
-            ("Prioridade", solicitacao.prioridade),
-            ("Status Atual", solicitacao.status),
-            ("Descrição", solicitacao.descricao),
-            ("Informações Adicionais", solicitacao.informacoes_adicionais or "-")
-        ])
-
-        # =========================
-        # SEÇÃO 2
-        # =========================
-
-        criar_secao("Dados do Solicitante", [
-            ("Nome", solicitacao.nome),
-            ("E-mail", solicitacao.email),
-            ("Telefone", solicitacao.telefone),
-        ])
-
-        # =========================
-        # SEÇÃO 3
-        # =========================
-
-        local_nome = getattr(solicitacao.local, 'nome', 'N/A')
-        unidade_nome = getattr(solicitacao, 'nome_da_unidade', 'N/A')
-        local_cidade = getattr(solicitacao.local, 'cidade', '')
-        local_estado = getattr(solicitacao.local, 'estado', '')
-        cidade_estado = f"{local_cidade}/{local_estado}".strip("/")
-
-        criar_secao("Localização", [
-            ("Secretaria", local_nome),
-            ("Unidade", unidade_nome),
-            ("Cidade/UF", cidade_estado or "-"),
-        ])
-
-        # =========================
-        # BUILD
-        # =========================
-
+        # Build do PDF
         doc.build(elements)
         pdf_bytes = buffer.getvalue()
         buffer.close()
