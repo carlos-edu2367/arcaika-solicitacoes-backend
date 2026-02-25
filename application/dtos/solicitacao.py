@@ -41,5 +41,6 @@ class SolicitacaoDisplay(BaseModel):
     prioridade: Prioridade
     nome_da_unidade: str
     ordem_de_servico: int
+    status: str
     informacoes_adicionais: Optional[str] = None
     anexos: Optional[list[AnexosDisplay]] = None

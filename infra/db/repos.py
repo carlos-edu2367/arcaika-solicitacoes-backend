@@ -4,7 +4,7 @@ from domain.entities.locais import Local as LocalDomain
 from domain.entities.solicitacao import Solicitacao as SolicitacaoDomain, Status
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import select
 from infra.db.models import User as UserORM, Local as LocalORM, Solicitacao as SolicitacaoORM, AnexoSolicitacao
 from fastapi import HTTPException, UploadFile
@@ -116,12 +116,22 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         self.storage = StorageProvider()
 
     async def get_by_id(self, id: UUID) -> SolicitacaoDomain:
-        stmt = select(SolicitacaoORM).where(SolicitacaoORM.id == id)
+        """
+        Busca uma solicitação pelo ID, garantindo o carregamento do relacionamento 'local'
+        para evitar erros de Lazy Loading em ambiente assíncrono.
+        """
+        stmt = (
+            select(SolicitacaoORM)
+            .options(selectinload(SolicitacaoORM.local))
+            .where(SolicitacaoORM.id == id)
+        )
         result = await self.session.execute(stmt)
         solicitacao = result.scalar_one_or_none()
+        
         if not solicitacao:
             raise HTTPException(status_code=404, detail="Solicitação não encontrada")
-        return solicitacao.to_domain
+            
+        return solicitacao.to_domain()
     
     async def get_by_id_for_user(self, id: UUID) -> SolicitacaoDisplay:
         stmt = select(SolicitacaoORM).where(SolicitacaoORM.id == id).options(joinedload(SolicitacaoORM.anexos))
@@ -140,6 +150,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
             prioridade=solicitacao.prioridade,
             nome_da_unidade = solicitacao.nome_da_unidade,
             ordem_de_servico= solicitacao.ordem_servico,
+            status = solicitacao.status,
             informacoes_adicionais=solicitacao.informacoes_adicionais,
             anexos=[]
         )
@@ -181,6 +192,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
                 nome_da_unidade = s.nome_da_unidade,
                 ordem_de_servico = s.ordem_servico,
                 informacoes_adicionais=s.informacoes_adicionais,
+                status = s.status
             )
             for s in solicitacoes
         ]
@@ -189,7 +201,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
                             offset: int = 0) -> list[SolicitacaoDisplay]:
         stmt = (
             select(SolicitacaoORM)
-            .where(SolicitacaoORM.status == status.value)
+            .where(SolicitacaoORM.status == status)
             .order_by(SolicitacaoORM.created_date.desc())  
             .limit(limit)
             .offset(offset)
@@ -211,46 +223,62 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
                 nome_da_unidade = s.nome_da_unidade,
                 ordem_de_servico = s.ordem_servico,
                 informacoes_adicionais=s.informacoes_adicionais,
+                status=s.status
             )
             for s in solicitacoes
         ]
 
     async def save(self, solicitacao: SolicitacaoDomain) -> SolicitacaoDomain:
+        # criar nova solicitação
         if not solicitacao.id:
-            new = SolicitacaoORM(local_id = solicitacao.local.id,
-                                 nome = solicitacao.nome.upper(),
-                                 assunto = solicitacao.assunto.upper(),
-                                 email = solicitacao.email,
-                                 telefone = solicitacao.telefone,
-                                 descricao = solicitacao.descricao,
-                                 prioridade = solicitacao.prioridade.value,
-                                 informacoes_adicionais = solicitacao.informacoes_adicionais,
-                                 status = solicitacao.status.value,
-                                 nome_da_unidade = solicitacao.nome_da_unidade.upper())
+            new = SolicitacaoORM(
+                local_id=solicitacao.local.id,
+                nome=solicitacao.nome.upper(),
+                assunto=solicitacao.assunto.upper(),
+                email=solicitacao.email,
+                telefone=solicitacao.telefone,
+                descricao=solicitacao.descricao,
+                prioridade=solicitacao.prioridade,
+                informacoes_adicionais=solicitacao.informacoes_adicionais,
+                status=solicitacao.status,
+                nome_da_unidade=solicitacao.nome_da_unidade.upper()
+            )
             self.session.add(new)
             await self.session.flush()
-            await self.session.refresh(new, ["local"]) 
-        
-            return new.to_domain()
-        
-        stmt = select(SolicitacaoORM).where(SolicitacaoORM.id == solicitacao.id)
+            
+            # buscar com selectinload para garantir que o local está carregado
+            stmt = select(SolicitacaoORM).options(selectinload(SolicitacaoORM.local)).where(SolicitacaoORM.id == new.id)
+            result = await self.session.execute(stmt)
+            new_loaded = result.scalar_one()
+
+            return new_loaded.to_domain()
+
+        # atualizar solicitação existente
+        stmt = select(SolicitacaoORM).options(selectinload(SolicitacaoORM.local)).where(SolicitacaoORM.id == solicitacao.id)
         result = await self.session.execute(stmt)
         solic = result.scalar_one_or_none()
         if not solic:
             raise HTTPException(status_code=404, detail="Solicitação não encontrada")
-        
+
+        # atualizar campos
         solic.local_id = solicitacao.local.id
         solic.nome = solicitacao.nome.upper()
         solic.email = solicitacao.email
         solic.assunto = solicitacao.assunto.upper()
         solic.telefone = solicitacao.telefone
-        solic.prioridade = solicitacao.prioridade.value
+        solic.prioridade = solicitacao.prioridade
         solic.informacoes_adicionais = solicitacao.informacoes_adicionais
-        solic.status = solicitacao.status.value
+        solic.status = solicitacao.status
         solic.nome_da_unidade = solicitacao.nome_da_unidade.upper()
+
         await self.session.flush()
-        await self.session.refresh(solic, ["local"])
-        return solic.to_domain()
+
+        # garantir que local está carregado
+        stmt = select(SolicitacaoORM).options(selectinload(SolicitacaoORM.local)).where(SolicitacaoORM.id == solic.id)
+        result = await self.session.execute(stmt)
+        solic_loaded = result.scalar_one()
+
+        return solic_loaded.to_domain()
     
     async def add_anexo(self, solicitacao_id: UUID, files: list[UploadFile]) -> list[AnexosDisplay]:
         solicitacao = await self.session.get(SolicitacaoORM, solicitacao_id)
