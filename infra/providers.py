@@ -385,7 +385,7 @@ class EmailProvider:
 
                                     <!-- Botão -->
                                     <div style="text-align:center;margin-top:30px;">
-                                        <a href="https://app.neectify.com"
+                                        <a href="https://requests.arcaikaengenharia.com"
                                         style="
                                                 background:#f97316;
                                                 color:#ffffff;
