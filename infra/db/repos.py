@@ -138,6 +138,8 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
             telefone=solicitacao.telefone,
             descricao=solicitacao.descricao,
             prioridade=solicitacao.prioridade,
+            nome_da_unidade = solicitacao.nome_da_unidade,
+            ordem_de_servico= solicitacao.ordem_servico,
             informacoes_adicionais=solicitacao.informacoes_adicionais,
             anexos=[]
         )
@@ -176,6 +178,8 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
                 telefone=s.telefone,
                 descricao=s.descricao,
                 prioridade=s.prioridade,
+                nome_da_unidade = s.nome_da_unidade,
+                ordem_de_servico = s.ordem_servico,
                 informacoes_adicionais=s.informacoes_adicionais,
             )
             for s in solicitacoes
@@ -191,7 +195,8 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
                                  descricao = solicitacao.descricao,
                                  prioridade = solicitacao.prioridade.value,
                                  informacoes_adicionais = solicitacao.informacoes_adicionais,
-                                 status = solicitacao.status.value)
+                                 status = solicitacao.status.value,
+                                 nome_da_unidade = solicitacao.nome_da_unidade)
             self.session.add(new)
             await self.session.flush()
             await self.session.refresh(new, ["local"]) 
@@ -212,6 +217,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         solic.prioridade = solicitacao.prioridade.value
         solic.informacoes_adicionais = solicitacao.informacoes_adicionais
         solic.status = solicitacao.status.value
+        solic.nome_da_unidade = solicitacao.nome_da_unidade
         await self.session.flush()
         await self.session.refresh(solic, ["local"])
         return solic.to_domain()

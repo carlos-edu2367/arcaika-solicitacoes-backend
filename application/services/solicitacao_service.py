@@ -30,7 +30,8 @@ class SolicitacaoService():
                           telefone=dto.telefone,
                           descricao=dto.descricao,
                           prioridade=dto.prioridade,
-                          informacoes_adicionais=dto.informacoes_adicionais)
+                          informacoes_adicionais=dto.informacoes_adicionais,
+                          nome_da_unidade=dto.nome_unidade)
         new = await self.solicitacao_repo.save(new)
         await self.uow.commit()
         return new

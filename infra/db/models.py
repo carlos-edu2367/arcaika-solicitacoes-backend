@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, ForeignKey, DateTime, func
+from sqlalchemy import Column, String, ForeignKey, DateTime, func, Integer, Sequence
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from infra.db.setup import Base
@@ -6,6 +6,11 @@ from uuid import uuid4
 from domain.entities.user import User as UserDomain
 from domain.entities.solicitacao import Solicitacao as SolicitacaoDomain
 from domain.entities.locais import Local as LocalDomain
+
+ordem_servico_seq = Sequence(
+    "ordem_servico_seq",
+    metadata=Base.metadata
+)
 
 class User(Base):
     __tablename__ = "users"
@@ -43,7 +48,15 @@ class Solicitacao(Base):
     __tablename__ = "solicitacoes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    ordem_servico = Column(
+        Integer,
+        ordem_servico_seq,
+        server_default=ordem_servico_seq.next_value(),
+        unique=True,
+        nullable=False
+    )
     local_id = Column(UUID(as_uuid=True), ForeignKey("locais.id", ondelete="CASCADE"), nullable=False)
+    nome_da_unidade = Column(String, nullable=False)
     nome = Column(String, nullable=False)
     email = Column(String, nullable=False)
     assunto = Column(String, nullable=False)
@@ -68,7 +81,9 @@ class Solicitacao(Base):
             prioridade=self.prioridade,
             status=self.status,
             informacoes_adicionais=self.informacoes_adicionais,
-            id=self.id
+            id=self.id,
+            ordem_servico=self.ordem_servico,
+            nome_da_unidade=self.nome_da_unidade
         )
     
 class AnexoSolicitacao(Base):

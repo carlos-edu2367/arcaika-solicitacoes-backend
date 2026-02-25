@@ -17,11 +17,13 @@ class Solicitacao():
                  nome: str, 
                  email: str, 
                  telefone:str, 
-                 descricao: str, 
+                 descricao: str,
+                 nome_da_unidade: str,
                  prioridade: Prioridade, 
                  status: Status = Status.CRIADO,
                  informacoes_adicionais: str = None, 
-                 id: UUID = None):
+                 id: UUID = None,
+                 ordem_servico: int = None):
         self.local = local
         self.assunto = assunto
         self.status = status
@@ -32,5 +34,5 @@ class Solicitacao():
         self.prioridade = prioridade
         self.informacoes_adicionais = informacoes_adicionais
         self.id = id
-
-    
+        self.ordem_servico = ordem_servico
+        self.nome_da_unidade = nome_da_unidade

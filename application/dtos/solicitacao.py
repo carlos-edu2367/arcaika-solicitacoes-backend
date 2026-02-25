@@ -19,7 +19,8 @@ class CreateSolicitacao(BaseModel):
     assunto: str
     nome: str
     email: EmailStr
-    telefone:str
+    telefone: str
+    nome_unidade: str
     descricao: str
     prioridade: Prioridade
     informacoes_adicionais: Optional[str] = None
@@ -38,5 +39,7 @@ class SolicitacaoDisplay(BaseModel):
     telefone:str
     descricao: str
     prioridade: Prioridade
+    nome_da_unidade: str
+    ordem_de_servico: int
     informacoes_adicionais: Optional[str] = None
     anexos: Optional[list[AnexosDisplay]] = None
