@@ -208,7 +208,7 @@ class EmailProvider:
         from datetime import datetime
         from reportlab.platypus import (
             SimpleDocTemplate, Paragraph, Spacer,
-            Table, TableStyle, HRFlowable, Image
+            Table, TableStyle, HRFlowable, Image, Flowable
         )
         from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib import colors
@@ -261,6 +261,63 @@ class EmailProvider:
         style_desc_text = ParagraphStyle('DescText', parent=styles['Normal'], fontSize=10, textColor=COR_CINZA_ESCURO, leading=14)
         
         style_footer = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.HexColor("#9CA3AF"), alignment=TA_CENTER, leading=10)
+
+        # =========================
+        # CLASSE CUSTOMIZADA PARA OBSERVAÇÕES
+        # =========================
+        class CardObservacoes(Flowable):
+            def __init__(self, largura, cor_borda, cor_fundo, style_titulo):
+                Flowable.__init__(self)
+                self.width = largura
+                self.cor_borda = cor_borda
+                self.cor_fundo = cor_fundo
+                self.style_titulo = style_titulo
+                self.altura_linha = 22 # espaçamento entre as linhas
+
+            def wrap(self, availWidth, availHeight):
+                # Reserva espaço para o rodapé e espaçamentos finais (~50 pontos)
+                espaco_livre = availHeight - 50
+                min_linhas = 4
+                altura_minima = (min_linhas * self.altura_linha) + 40 # 40 pts para o cabeçalho do card
+                
+                if espaco_livre < altura_minima:
+                    # Se não houver espaço suficiente na página atual, força quebra para a próxima
+                    self.height = altura_minima
+                    self.num_linhas = min_linhas
+                    return self.width, availHeight + 100 
+                
+                self.num_linhas = int((espaco_livre - 40) / self.altura_linha)
+                self.height = (self.num_linhas * self.altura_linha) + 40
+                return self.width, self.height
+
+            def draw(self):
+                self.canv.saveState()
+                
+                # Fundo e borda do card
+                self.canv.setFillColor(self.cor_fundo)
+                self.canv.setStrokeColor(self.cor_borda)
+                self.canv.setLineWidth(1)
+                self.canv.rect(0, 0, self.width, self.height, fill=1, stroke=1)
+                
+                # Título
+                p = Paragraph("OBSERVAÇÕES", self.style_titulo)
+                w, h = p.wrap(self.width - 30, 40)
+                p.drawOn(self.canv, 15, self.height - h - 15)
+                
+                # Divisória
+                self.canv.setStrokeColor(colors.HexColor("#F3F4F6"))
+                self.canv.setLineWidth(2)
+                y_divisoria = self.height - 35
+                self.canv.line(15, y_divisoria, self.width - 15, y_divisoria)
+                
+                # Linhas para anotação
+                self.canv.setStrokeColor(colors.HexColor("#D1D5DB"))
+                self.canv.setLineWidth(0.5)
+                for i in range(self.num_linhas):
+                    y = y_divisoria - (i + 1) * self.altura_linha
+                    self.canv.line(15, y, self.width - 15, y)
+                    
+                self.canv.restoreState()
 
         # Dados da Solicitação
         os_text = str(solicitacao.ordem_servico).zfill(4)
@@ -467,10 +524,17 @@ class EmailProvider:
         ]))
         
         elements.append(detalhes_card)
-        elements.append(Spacer(1, 25))
+        elements.append(Spacer(1, 20))
 
         # =========================
-        # 5. RODAPÉ
+        # 5. OBSERVAÇÕES DINÂMICAS
+        # =========================
+        obs_card = CardObservacoes(180*mm, COR_BORDA, COR_BRANCA, style_card_title)
+        elements.append(obs_card)
+        elements.append(Spacer(1, 15))
+
+        # =========================
+        # 6. RODAPÉ
         # =========================
         elements.append(HRFlowable(width="100%", thickness=1, color=COR_BORDA, spaceBefore=0, spaceAfter=10))
         elements.append(Paragraph(
