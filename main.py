@@ -40,5 +40,8 @@ app.add_middleware(
 )
 from infra.web.routes.solicitacoes import router as solicitacao_router
 from infra.web.routes.user import router as user_router
+from infra.web.routes.local_user import router as local_user_router
+
 app.include_router(user_router)
 app.include_router(solicitacao_router)
+app.include_router(local_user_router)

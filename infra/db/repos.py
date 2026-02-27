@@ -1,12 +1,12 @@
 from application.providers import repo
 from domain.entities.user import User as UserDomain, Roles
-from domain.entities.locais import Local as LocalDomain
+from domain.entities.locais import Local as LocalDomain, LocalUser as LocalUserDomain, LocalRoles
 from domain.entities.solicitacao import Solicitacao as SolicitacaoDomain, Status
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import select
-from infra.db.models import User as UserORM, Local as LocalORM, Solicitacao as SolicitacaoORM, AnexoSolicitacao
+from infra.db.models import User as UserORM, Local as LocalORM, Solicitacao as SolicitacaoORM, AnexoSolicitacao, LocalUser as LocalUserORM
 from fastapi import HTTPException, UploadFile
 from application.dtos.solicitacao import SolicitacaoDisplay, AnexosDisplay, LocalResponse
 from infra.providers import StorageProvider
@@ -280,7 +280,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
 
         return solic_loaded.to_domain()
     
-    async def add_anexo(self, solicitacao_id: UUID, files: list[UploadFile]) -> list[AnexosDisplay]:
+    async def add_anexo(self, solicitacao_id: UUID, files: list[UploadFile], classe: str = "cliente") -> list[AnexosDisplay]:
         solicitacao = await self.session.get(SolicitacaoORM, solicitacao_id)
         if not solicitacao:
             raise HTTPException(status_code=404, detail="Solicitação não encontrada")
@@ -290,7 +290,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         for file in files:
             try:
                 path = await self.storage.upload_file(file)
-                new = AnexoSolicitacao(title = file.filename, file_path = path, solicitacao_id= solicitacao.id)
+                new = AnexoSolicitacao(title = file.filename, file_path = path, solicitacao_id= solicitacao.id, classe= classe)
                 self.session.add(new)
                 await self.session.flush()
                 signated_url = await self.storage.get_by_path(path)
@@ -312,3 +312,48 @@ class UOWProviderINFRA(repo.UOWProvider):
 
     async def rollback(self):
         await self.session.rollback()
+
+class LocalUserRepoINFRA(repo.LocalUserRepo):
+
+    def __init__(self, session: AsyncSession):
+        self.session = session
+
+    async def get_by_id(self, id: UUID) -> LocalUserDomain:
+        stmt = select(LocalUserORM).where(LocalUserORM.id == id)
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User não encontrado")
+        
+        return user.to_domain()
+
+    async def get_by_email(self, email: str) -> LocalUserDomain | None:
+        stmt = select(LocalUserORM).where(LocalUserORM.email == email)
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
+        if not user:
+            return None
+        return user.to_domain()
+    
+    async def save(self, user: LocalUserDomain):
+        if not user.id:
+            new = LocalUserORM(local_id = user.local_id, nome = user.nome,
+                               email = user.email, senha_hash = user.senha_hash,
+                               role = user.role)
+            self.session.add(new)
+            return
+        
+        stmt = select(LocalUserORM).where(LocalUserORM.id == user.id)
+        result = await self.session.execute(stmt)
+        user_orm = result.scalar_one_or_none()
+
+        if not user_orm:
+            raise HTTPException(status_code=404, detail="User não encontrado")
+        
+        user_orm.local_id = user.local_id
+        user_orm.email = user.email
+        user_orm.nome = user.nome
+        user_orm.senha_hash = user.senha_hash
+        user_orm.role = user.role
+
+        return

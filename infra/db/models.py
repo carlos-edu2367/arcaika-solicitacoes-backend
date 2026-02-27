@@ -5,7 +5,7 @@ from infra.db.setup import Base
 from uuid import uuid4
 from domain.entities.user import User as UserDomain
 from domain.entities.solicitacao import Solicitacao as SolicitacaoDomain
-from domain.entities.locais import Local as LocalDomain
+from domain.entities.locais import Local as LocalDomain, LocalUser as LocalUserDomain
 
 ordem_servico_seq = Sequence(
     "ordem_servico_seq",
@@ -91,7 +91,27 @@ class AnexoSolicitacao(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
     title = Column(String, nullable=False)
+    classe = Column(String, nullable=False, default="cliente") # "admin" quer dizer que o admin enviou
     file_path = Column(String, nullable=False)
     solicitacao_id = Column(UUID(as_uuid=True), ForeignKey("solicitacoes.id", ondelete="CASCADE"))
 
     solicitacao = relationship("Solicitacao", back_populates="anexos")
+
+class LocalUser(Base):
+    __tablename__ = "local_users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid4)
+    local_id = Column(UUID(as_uuid=True), ForeignKey("locais.id", ondelete="CASCADE"), nullable=False)
+    nome = Column(String, nullable=False)
+    email = Column(String, nullable=False, unique=True)
+    senha_hash = Column(String, nullable=False)
+    role = Column(String, nullable=False, default="local_user")
+    created_date = Column(DateTime(timezone=True), server_default=func.now())
+
+    def to_domain(self) -> LocalUserDomain:
+        return LocalUserDomain(nome=self.nome,
+                               email=self.email,
+                               senha_hash=self.senha_hash,
+                               local_id=self.local_id,
+                               id=self.id,
+                               role=self.role)

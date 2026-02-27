@@ -4,6 +4,7 @@ from uuid import UUID
 from application.dtos.solicitacao import SolicitacaoDisplay, AnexosDisplay
 from typing import List, Tuple
 
+
 class UserRepo(ABC):
     
     @abstractmethod
@@ -74,4 +75,18 @@ class UOWProvider(ABC):
 
     @abstractmethod
     async def rollback(self):
+        pass
+
+class LocalUserRepo(ABC):
+
+    @abstractmethod
+    async def get_by_id(self, id: UUID) -> locais.LocalUser:
+        pass
+
+    @abstractmethod
+    async def get_by_email(self, email: str) -> locais.LocalUser | None:
+        pass
+
+    @abstractmethod
+    async def save(self, user: locais.LocalUser):
         pass
