@@ -238,9 +238,9 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
                 email=solicitacao.email,
                 telefone=solicitacao.telefone,
                 descricao=solicitacao.descricao,
-                prioridade=solicitacao.prioridade,
+                prioridade=solicitacao.prioridade.value,
                 informacoes_adicionais=solicitacao.informacoes_adicionais,
-                status=solicitacao.status,
+                status=solicitacao.status.value,
                 nome_da_unidade=solicitacao.nome_da_unidade.upper()
             )
             self.session.add(new)

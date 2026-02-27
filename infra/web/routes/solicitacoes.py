@@ -4,9 +4,13 @@ from infra.web.dependencies import get_solicitacao_service, SolicitacaoService
 from infra.db.repos import UserDomain
 from infra.web.auth import get_current_user
 from domain.entities.user import Roles
+from domain.entities.solicitacao import Status
 from uuid import UUID
 from infra.providers import EmailProvider, StorageProvider
 from fastapi_limiter.depends import RateLimiter
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 router = APIRouter(prefix="/requests", tags=["Request"])
 storage = StorageProvider()
@@ -87,11 +91,14 @@ async def create_solicitacao(
     return new.id
 
 @router.post("/local/solicitacao/anexo", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
-async def anexar_arquivo(file: UploadFile,
+async def anexar_arquivo(file: list[UploadFile],
                          solicitacao_id: UUID = Form(...),
+                         classe: str = Form(...),
                          service: SolicitacaoService = Depends(get_solicitacao_service)) -> list[AnexosDisplay]:
+    if classe not in ["cliente", "admin"]:
+        raise HTTPException(status_code=400, detail="Classe inválida")
     try:
-        anexos = await service.solicitacao_repo.add_anexo(solicitacao_id, files=[file])
+        anexos = await service.solicitacao_repo.add_anexo(solicitacao_id, files=file, classe=classe)
         return anexos
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao tentar enviar arquivo ao supabase: {e}")
@@ -109,15 +116,13 @@ async def update_status(solicitacao_id: UUID,
     return
 
 @router.get("/solicitacoes/status", dependencies=[Depends(RateLimiter(times=25, seconds=60))])
-async def get_solicitacoes_por_status(status: str, 
+async def get_solicitacoes_por_status(status: Status, 
                                       page: int, 
                                       limit: int,
                                       current_user: UserDomain = Depends(get_current_user),
                                       service: SolicitacaoService = Depends(get_solicitacao_service)) -> list[SolicitacaoDisplay]:
     if current_user.role != Roles.ADMIN.value:
         raise HTTPException(status_code=403, detail="Usuário não autorizado")
-    if status not in ["criado", "em_andamento", "concluido"]:
-        raise HTTPException(status_code=400, detail="Status inválido")
     offset = (page-1)*limit
-    response = await service.solicitacao_repo.get_by_status(status, limit, offset)
+    response = await service.solicitacao_repo.get_by_status(status.value, limit, offset)
     return response
