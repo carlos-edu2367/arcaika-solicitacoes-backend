@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import redis.asyncio as redis
 from fastapi_limiter import FastAPILimiter
@@ -41,7 +42,16 @@ app.add_middleware(
 from infra.web.routes.solicitacoes import router as solicitacao_router
 from infra.web.routes.user import router as user_router
 from infra.web.routes.local_user import router as local_user_router
+from domain.errors import DomainError
 
 app.include_router(user_router)
 app.include_router(solicitacao_router)
 app.include_router(local_user_router)
+
+
+@app.exception_handler(DomainError)
+async def handler(request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={"detail": str(exc)}
+    )

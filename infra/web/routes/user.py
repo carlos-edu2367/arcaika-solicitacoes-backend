@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends
-from application.dtos.user import LoginDTOS, LoginResponse, UserInfo, UserRegisterDTOS, CreateLocalUserDTO
+from application.dtos.user import LoginDTOS, LoginResponse, UserInfo, UserRegisterDTOS, CreateLocalUserDTO, ChangePassword
 from application.dtos.solicitacao import CreateLocalDTO
 from infra.web.dependencies import get_solicitacao_service, SolicitacaoService, get_user_service, UserService, get_local_user_service, LocalUserService
 from infra.providers import TokenProvider
@@ -56,3 +56,23 @@ async def register_local_user(dtos: CreateLocalUserDTO,
     except Exception as e:
         logger.error(f"Erro ao registrar user: {e}")
         raise HTTPException(status_code= 500, detail="Erro interno ao registrar usuário")
+    
+@router.put("/change_password", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
+async def change_password(dtos: ChangePassword, local_user_service: LocalUserService = Depends(get_local_user_service),
+                          user_service: UserService = Depends(get_user_service)):
+    if dtos.new_password == dtos.old_password:
+        raise HTTPException(status_code=400, detail="As senhas não podem ser iguais")
+    if dtos.role == Roles.ADMIN.value or dtos.role == Roles.CLIENTE.value:
+        # user
+        user = await user_service.user_repo.get_by_email(dtos.email)
+        if not user_service.hash_provider.verify(user.senha_hash, dtos.old_password):
+            raise HTTPException(status_code=400, detail="Senha incorreta")
+        await user_service.update_senha(user, dtos.new_password)
+        return
+    
+    # local user
+    user = await local_user_service.local_user_repo.get_by_email(dtos.email)
+    if not local_user_service.hash.verify(user.senha_hash, dtos.old_password):
+        raise HTTPException(status_code=400, detail="Senha incorreta")
+    await local_user_service.update_senha(user, dtos.new_password)
+    return

@@ -32,8 +32,7 @@ class UserService():
             return None
         return user
     
-    async def update_senha(self, user_id: UUID, new_password: str):
-        user = await self.user_repo.get_by_id(user_id)
+    async def update_senha(self, user: User, new_password: str):
         user.validate_password_strenght(new_password)
         hashed = self.hash_provider.hash(new_password)
         user.senha_hash = hashed
@@ -67,8 +66,7 @@ class LocalUserService():
             return None
         return user
     
-    async def update_senha(self, local_user_id: UUID, new_password: str):
-        user = await self.local_user_repo.get_by_id(local_user_id)
+    async def update_senha(self, user: LocalUser, new_password: str):
         user.ensure_password_strenght(new_password)
         hashed = self.hash.hash(new_password)
         user.senha_hash = hashed

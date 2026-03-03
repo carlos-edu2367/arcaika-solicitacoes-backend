@@ -26,6 +26,6 @@ class LocalUser():
         self.id = id
         self.role = role
 
-    def ensure_password_strenght(password: str):
+    def ensure_password_strenght(self, password: str):
         if len(password) < 6:
             raise DomainError("Password is weak")

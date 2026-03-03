@@ -11,6 +11,9 @@ from fastapi import HTTPException, UploadFile
 from application.dtos.solicitacao import SolicitacaoDisplay, AnexosDisplay, LocalResponse
 from infra.providers import StorageProvider
 from typing import List, Tuple
+from logging import getLogger
+
+logger = getLogger(__name__)
 
 class UserRepositoryINFRA(repo.UserRepo):
 
@@ -41,6 +44,7 @@ class UserRepositoryINFRA(repo.UserRepo):
         )
 
         result = await self.session.execute(stmt)
+        logger.info(f"Admins identificados: {result.all()}")
         admins = result.all()  # já vem como lista de tuplas
 
         return [(nome, email) for nome, email in admins]

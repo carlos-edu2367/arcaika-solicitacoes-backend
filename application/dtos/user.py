@@ -33,3 +33,9 @@ class CreateLocalUserDTO(BaseModel):
     email: EmailStr
     senha: str
     local_id: UUID
+
+class ChangePassword(BaseModel):
+    email: str
+    role: LoginRole
+    old_password: str
+    new_password: str
