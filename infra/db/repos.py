@@ -12,6 +12,7 @@ from application.dtos.solicitacao import SolicitacaoDisplay, AnexosDisplay, Loca
 from infra.providers import StorageProvider
 from typing import List, Tuple
 from logging import getLogger
+import os
 
 logger = getLogger(__name__)
 
@@ -290,7 +291,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
 
         return solic_loaded.to_domain()
     
-    async def add_anexo(self, solicitacao_id: UUID, files: list[UploadFile], classe: str = "cliente") -> list[AnexosDisplay]:
+    async def add_anexo(self, solicitacao_id: UUID, files: list[UploadFile | str], classe: str = "cliente") -> list[AnexosDisplay]:
         solicitacao = await self.session.get(SolicitacaoORM, solicitacao_id)
         if not solicitacao:
             raise HTTPException(status_code=404, detail="Solicitação não encontrada")
@@ -299,12 +300,27 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         
         for file in files:
             try:
+                # O storage provider já sabe lidar com ambos os formatos
                 path = await self.storage.upload_file(file)
-                new = AnexoSolicitacao(title = file.filename, file_path = path, solicitacao_id= solicitacao.id, classe= classe)
+                
+                # NOVO: Descobre o título dependendo do tipo da variável
+                if isinstance(file, str):
+                    title = os.path.basename(file) # Extrai "documento.pdf" de "tmp_uploads/documento.pdf"
+                else:
+                    title = file.filename # Usa o atributo nativo do FastAPI
+
+                new = AnexoSolicitacao(
+                    title=title, 
+                    file_path=path, 
+                    solicitacao_id=solicitacao.id, 
+                    classe=classe
+                )
                 self.session.add(new)
                 await self.session.flush()
+                
                 signated_url = await self.storage.get_by_path(path)
                 response.append(AnexosDisplay(id=new.id, title=new.title, url=signated_url))
+                
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Erro ao anexar documentos: {e}")
             

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Form, UploadFile, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Form, UploadFile, Query, BackgroundTasks, File
 from application.dtos.solicitacao import CreateLocalDTO, LocalResponse, SolicitacaoDisplay, CreateSolicitacao, AnexosDisplay, UpdateSolicitacaoDTO
 from infra.web.dependencies import get_solicitacao_service, SolicitacaoService
 from infra.db.repos import UserDomain
@@ -9,12 +9,67 @@ from uuid import UUID
 from infra.providers import EmailProvider, StorageProvider
 from fastapi_limiter.depends import RateLimiter
 from logging import getLogger
+from infra.workers.anexos import processar_anexos_job
+from infra.workers.fila import fila_upload
+import os
+import uuid, shutil
+from pathlib import Path
+from fastapi.concurrency import run_in_threadpool
+
+
+UPLOAD_TEMP_DIR = Path("tmp_uploads")
 
 logger = getLogger(__name__)
 
 router = APIRouter(prefix="/requests", tags=["Request"])
 storage = StorageProvider()
 email_provider: EmailProvider = EmailProvider()
+
+UPLOAD_TEMP_DIR = Path("tmp_uploads")
+MAX_FILE_SIZE_MB = 10  
+ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"]
+
+async def salvar_temp(files: list[UploadFile]) -> list[str]:
+    UPLOAD_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    paths = []
+
+    for file in files:
+        # 1. Validação de Tipo (MIME Type)
+        if file.content_type not in ALLOWED_MIME_TYPES:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Tipo de arquivo não permitido: {file.content_type}. Use PDF, JPEG ou PNG."
+            )
+
+        # 2. Validação de Tamanho (movendo o cursor para o final do arquivo)
+        file.file.seek(0, 2)
+        file_size = file.file.tell()
+        await file.seek(0) # Retorna o cursor para o início para a leitura real
+
+        if file_size > (MAX_FILE_SIZE_MB * 1024 * 1024):
+            raise HTTPException(
+                status_code=413, 
+                detail=f"O arquivo {file.filename} excede o limite de {MAX_FILE_SIZE_MB}MB."
+            )
+
+        ext = Path(file.filename).suffix
+        filename = f"{uuid.uuid4()}{ext}"
+        path = UPLOAD_TEMP_DIR / filename
+
+        # 3. Salvamento em Chunks (Evita Out of Memory)
+        try:
+            with open(path, "wb") as buffer:
+                # O shutil.copyfileobj lê e escreve em pedaços (chunks) nativamente
+                await run_in_threadpool(shutil.copyfileobj, file.file, buffer)
+        except Exception as e:
+            logger.error(f"Erro ao salvar arquivo temporário: {e}")
+            raise HTTPException(status_code=500, detail="Erro interno ao processar o arquivo.")
+        finally:
+            await file.close()
+
+        paths.append(str(path))
+
+    return paths
    
 @router.post("/local", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def create_local(dtos: CreateLocalDTO,
@@ -90,18 +145,24 @@ async def create_solicitacao(
 
     return new.id
 
-@router.post("/local/solicitacao/anexo", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
-async def anexar_arquivo(file: list[UploadFile],
-                         solicitacao_id: UUID = Form(...),
-                         classe: str = Form(...),
-                         service: SolicitacaoService = Depends(get_solicitacao_service)) -> list[AnexosDisplay]:
-    if classe not in ["cliente", "admin"]:
-        raise HTTPException(status_code=400, detail="Classe inválida")
-    try:
-        anexos = await service.solicitacao_repo.add_anexo(solicitacao_id, files=file, classe=classe)
-        return anexos
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao tentar enviar arquivo ao supabase: {e}")
+@router.post("/local/solicitacao/anexo", dependencies=[Depends(RateLimiter(times=10, seconds=60))])
+async def anexar_arquivo(
+    solicitacao_id: UUID = Form(...),
+    classe: str = Form(...),
+    file: list[UploadFile] = File(...) 
+):
+    # Salva os arquivos de forma otimizada
+    paths = await salvar_temp(file)
+
+    # Envia para a fila do Redis
+    fila_upload.enqueue(
+        processar_anexos_job,
+        str(solicitacao_id),
+        paths,
+        classe
+    )
+
+    return {"status": "upload_em_processamento", "arquivos_recebidos": len(paths)}
 
 @router.put("/local/solicitacao/status", dependencies=[Depends(RateLimiter(times=5, seconds=60))])
 async def update_status(solicitacao_id: UUID,

@@ -9,7 +9,7 @@ from typing import List, Tuple
 from urllib.parse import urlparse
 from uuid import UUID
 from logging import getLogger             
-
+import mimetypes
 # 2. Third-Party Libraries (Instalados via pip)
 import httpx
 from dotenv import load_dotenv
@@ -84,26 +84,45 @@ class StorageProvider():
         logger.error(f"[gerar_url_assinada] Resposta inesperada do Supabase: {resposta}")
         return None
 
-    async def upload_file(self, file: UploadFile, bucket: str = "docs") -> str:
+    async def upload_file(self, file: UploadFile | str, bucket: str = "docs") -> str:
         print("Supabase_URL: ", Settings.SUPABASE_URL)
         supabase: AsyncClient = await create_async_client(Settings.SUPABASE_URL, Settings.SUPABASE_KEY)
+        
         try:
-            file_ext = file.filename.split(".")[-1] if "." in file.filename else ""
+            # 2. Se o input é uma String (Caminho do arquivo vindo do Worker)
+            if isinstance(file, str):
+                original_filename = os.path.basename(file)
+                
+                # Lê o arquivo diretamente do disco espelhado
+                with open(file, "rb") as f:
+                    content = f.read()
+                
+                # Adivinha o content-type (ex: application/pdf)
+                content_type = mimetypes.guess_type(file)[0] or "application/octet-stream"
+                
+            # 3. Se for um UploadFile (Vindo de uma rota direta do FastAPI)
+            else:
+                original_filename = file.filename
+                content = await file.read()
+                content_type = file.content_type or "application/octet-stream"
+
+            # Gera o nome único extraindo a extensão do nome original
+            file_ext = original_filename.split(".")[-1] if "." in original_filename else ""
             unique_name = f"{uuid.uuid4()}.{file_ext}" if file_ext else str(uuid.uuid4())
             file_path = f"{unique_name}"
 
-            content = await file.read()
-
+            # Faz o upload enviando os bytes e o content-type dinâmico
             resposta = await supabase.storage.from_(bucket).upload(
                 path=file_path,
                 file=content,
                 file_options={
-                    "content-type": file.content_type or "application/octet-stream"
+                    "content-type": content_type
                 }
             )
 
         except (StorageApiError, httpx.HTTPStatusError, json.JSONDecodeError) as e:
-            logger.warning(f"[upload_file] Falha ao enviar '{file.filename}': {e}")
+            nome_log = original_filename if 'original_filename' in locals() else str(file)
+            logger.warning(f"[upload_file] Falha ao enviar '{nome_log}': {e}")
             raise
         except Exception as e:
             logger.error(f"[upload_file] Erro inesperado no upload: {e}", exc_info=True)
