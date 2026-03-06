@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print("Servidor iniciado")
 
     redis_client = redis.from_url(
         Settings.REDIS_URL,
