@@ -27,7 +27,18 @@ email_provider: EmailProvider = EmailProvider()
 
 UPLOAD_TEMP_DIR = Path("tmp_uploads")
 MAX_FILE_SIZE_MB = 10  
-ALLOWED_MIME_TYPES = ["application/pdf", "image/jpeg", "image/png"]
+ALLOWED_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/heic",
+    "image/heif",
+    "image/webp",
+    "video/mp4",
+    "video/quicktime",
+    "video/x-matroska",
+    "video/webm",
+    "application/pdf"
+]
 
 async def salvar_temp(files: list[UploadFile]) -> list[str]:
     UPLOAD_TEMP_DIR.mkdir(parents=True, exist_ok=True)
