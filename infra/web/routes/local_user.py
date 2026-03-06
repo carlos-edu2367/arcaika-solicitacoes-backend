@@ -72,3 +72,14 @@ async def editar_solicitacao(dtos: UpdateSolicitacaoWEB, current_user: LocalUser
         informacoes_adicionais=dtos.informacoes_adicionais
     ))
     return
+
+@router.delete("/solicitacoes/deletar", dependencies=[Depends(RateLimiter(times=25, seconds=60))])
+async def deletar_solicitacao(solicitacao_id: UUID, current_user: LocalUserDomain = Depends(get_current_local_user),
+                             service: SolicitacaoService = Depends(get_solicitacao_service)):
+    solicitacao = await service.solicitacao_repo.get_by_id(solicitacao_id)
+    if solicitacao.status != Status.CRIADO.value:
+        raise HTTPException(status_code=400, detail="Não é possivel deletar uma OS iniciada, comunique ao ADM")
+    
+    if solicitacao.local.id != current_user.local_id:
+        raise HTTPException(status_code=403, detail="Usuário não autorizado")
+    await service.delete_solicitacao(solicitacao)

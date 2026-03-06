@@ -37,3 +37,7 @@ class Solicitacao():
         self.id = id
         self.ordem_servico = ordem_servico
         self.nome_da_unidade = nome_da_unidade
+
+
+    def delete(self):
+        self.deleted: bool = True

@@ -74,3 +74,8 @@ class SolicitacaoService():
         await self.uow.commit()
         return solicitacao
     
+    async def delete_solicitacao(self, solicitacao: Solicitacao):
+        solicitacao.delete()
+        await self.solicitacao_repo.save(solicitacao)
+        await self.uow.commit()
+        return

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from infra.config import Settings
 
 Base = declarative_base()
-db = create_async_engine(Settings.DATABASE_URL)
+db = create_async_engine(Settings.DATABASE_URL, pool_pre_ping=True)
 
 AsyncSessionLocal = sessionmaker(
     db,

@@ -232,7 +232,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
             for s in solicitacoes
         ]
 
-    async def save(self, solicitacao: SolicitacaoDomain) -> SolicitacaoDomain:
+    async def save(self, solicitacao: SolicitacaoDomain) -> SolicitacaoDomain | None:
         # criar nova solicitação
         if not solicitacao.id:
             new = SolicitacaoORM(
@@ -263,7 +263,12 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         solic = result.scalar_one_or_none()
         if not solic:
             raise HTTPException(status_code=404, detail="Solicitação não encontrada")
-
+        
+        if solicitacao.deleted:
+            await self.session.delete(solic)
+            await self.session.flush()
+            return None
+        
         # atualizar campos
         solic.local_id = solicitacao.local.id
         solic.nome = solicitacao.nome.upper()

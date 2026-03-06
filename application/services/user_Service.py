@@ -51,9 +51,9 @@ class LocalUserService():
         if await self.local_user_repo.get_by_email(dto.email):
             raise Conflict("User already exists")
         local = await self.local_repo.get_by_id(dto.local_id)
-        LocalUser.ensure_password_strenght(dto.senha)
         hashed = self.hash.hash(dto.senha)
         new = LocalUser(nome=dto.nome, email=dto.email, senha_hash=hashed, local_id=local.id)
+        new.ensure_password_strenght(dto.senha)
         await self.local_user_repo.save(new)
         await self.uow.commit()
         return

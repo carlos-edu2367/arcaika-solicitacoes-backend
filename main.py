@@ -6,6 +6,11 @@ from fastapi_limiter import FastAPILimiter
 from infra.config import Settings
 from infra.db.setup import Base, db
 from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+from sqlalchemy import text
+from datetime import datetime, timedelta
+
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
