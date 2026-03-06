@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Depends, Form, UploadFile, Query, BackgroundTasks
-from application.dtos.solicitacao import CreateLocalDTO, LocalResponse, SolicitacaoDisplay, CreateSolicitacao, AnexosDisplay
+from application.dtos.solicitacao import CreateLocalDTO, LocalResponse, SolicitacaoDisplay, CreateSolicitacao, AnexosDisplay, UpdateSolicitacaoDTO
 from infra.web.dependencies import get_solicitacao_service, SolicitacaoService
 from infra.db.repos import UserDomain
 from infra.web.auth import get_current_user
@@ -126,3 +126,4 @@ async def get_solicitacoes_por_status(status: Status,
     offset = (page-1)*limit
     response = await service.solicitacao_repo.get_by_status(status.value, limit, offset)
     return response
+

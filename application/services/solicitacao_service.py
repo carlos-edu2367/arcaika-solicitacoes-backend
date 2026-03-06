@@ -42,3 +42,35 @@ class SolicitacaoService():
         await self.solicitacao_repo.save(solicitacao)
         await self.uow.commit()
         return
+    
+    async def update_solicitacao(self, dtos: solicitacao.UpdateSolicitacaoDTO) -> Solicitacao:
+        solicitacao = await self.solicitacao_repo.get_by_id(dtos.solicitacao_id)
+        if dtos.assunto:
+            solicitacao.assunto = dtos.assunto
+            print(f"update: {dtos.assunto}")
+        if dtos.descricao:
+            solicitacao.descricao = dtos.descricao
+            print(f"update: {dtos.descricao}")
+        if dtos.nome:
+            solicitacao.nome = dtos.nome
+            print(f"update: {dtos.nome}")
+        if dtos.email:
+            solicitacao.email = dtos.email
+            print(f"update: {dtos.email}")
+        if dtos.telefone:
+            solicitacao.telefone = dtos.telefone
+            print(f"update: {dtos.telefone}")
+        if dtos.prioridade:
+            solicitacao.prioridade = dtos.prioridade
+            print(f"update: {dtos.prioridade}")
+        if dtos.nome_da_unidade:
+            solicitacao.nome_da_unidade = dtos.nome_da_unidade
+            print(f"update: {dtos.nome_da_unidade}")
+        if dtos.informacoes_adicionais:
+            solicitacao.informacoes_adicionais = dtos.informacoes_adicionais
+            print(f"update: {dtos.informacoes_adicionais}")
+        
+        await self.solicitacao_repo.save(solicitacao)
+        await self.uow.commit()
+        return solicitacao
+    

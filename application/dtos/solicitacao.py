@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import UUID
-from domain.entities.solicitacao import Prioridade
+from domain.entities.solicitacao import Prioridade, Solicitacao, Status
 
 class LocalResponse(BaseModel):
     id: UUID
@@ -44,3 +44,17 @@ class SolicitacaoDisplay(BaseModel):
     status: str
     informacoes_adicionais: Optional[str] = None
     anexos: Optional[list[AnexosDisplay]] = None
+
+
+
+class UpdateSolicitacaoDTO(BaseModel):
+    solicitacao_id: UUID
+    assunto: Optional[str] = None
+    nome: Optional[str] = None
+    email: Optional[EmailStr] = None
+    telefone: Optional[str] = None
+    descricao: Optional[str] = None
+    prioridade: Optional[Prioridade] = None
+    nome_da_unidade: Optional[str] = None
+    informacoes_adicionais: Optional[str] = None
+

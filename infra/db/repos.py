@@ -270,6 +270,7 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
         solic.email = solicitacao.email
         solic.assunto = solicitacao.assunto.upper()
         solic.telefone = solicitacao.telefone
+        solic.descricao = solicitacao.descricao
         solic.prioridade = solicitacao.prioridade
         solic.informacoes_adicionais = solicitacao.informacoes_adicionais
         solic.status = solicitacao.status

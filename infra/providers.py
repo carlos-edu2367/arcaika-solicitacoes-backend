@@ -54,6 +54,7 @@ class INFRAHashProvider(HashProvider):
 
 class StorageProvider():
     async def get_by_path(self, path: str, bucket: str = "docs") -> str | None:
+        print("Supabase_URL: ", Settings.SUPABASE_URL)
         supabase: AsyncClient = await create_async_client(Settings.SUPABASE_URL, Settings.SUPABASE_KEY)
         validade_segundos = 3600
         try:
@@ -84,6 +85,7 @@ class StorageProvider():
         return None
 
     async def upload_file(self, file: UploadFile, bucket: str = "docs") -> str:
+        print("Supabase_URL: ", Settings.SUPABASE_URL)
         supabase: AsyncClient = await create_async_client(Settings.SUPABASE_URL, Settings.SUPABASE_KEY)
         try:
             file_ext = file.filename.split(".")[-1] if "." in file.filename else ""
