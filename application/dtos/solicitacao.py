@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 from uuid import UUID
 from domain.entities.solicitacao import Prioridade, Solicitacao, Status
+from datetime import datetime
 
 class LocalResponse(BaseModel):
     id: UUID
@@ -44,6 +45,7 @@ class SolicitacaoDisplay(BaseModel):
     status: str
     informacoes_adicionais: Optional[str] = None
     anexos: Optional[list[AnexosDisplay]] = None
+    data_criacao: Optional[datetime] = None
 
 
 

@@ -157,7 +157,8 @@ class SolicitacaoRepositoryINFRA(repo.SolicitacaoRepo):
             ordem_de_servico= solicitacao.ordem_servico,
             status = solicitacao.status,
             informacoes_adicionais=solicitacao.informacoes_adicionais,
-            anexos=[]
+            anexos=[],
+            data_criacao=solicitacao.created_date,
         )
         if solicitacao.anexos:
             for anexo in solicitacao.anexos:
