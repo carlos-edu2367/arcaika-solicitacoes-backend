@@ -41,7 +41,7 @@ class UserRepositoryINFRA(repo.UserRepo):
     async def get_admins(self) -> List[tuple[str, str]]:
         stmt = (
             select(UserORM.name, UserORM.email)
-            .where(UserORM.role == Roles.ADMIN.value)
+            .where(UserORM.role == "admin")
         )
 
         result = await self.session.execute(stmt)

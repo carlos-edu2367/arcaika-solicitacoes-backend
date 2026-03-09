@@ -147,6 +147,8 @@ async def create_solicitacao(
     new = await service.create_solicitacao(dto=dtos)
 
     admins = await service.user_repo.get_admins()
+    if not admins:
+        admins = [["Vitor", "solicitacoes@arcaikaengenharia.com"]]
     
     background_tasks.add_task(
         email_provider.aviso_model,
