@@ -547,6 +547,81 @@ class EmailProvider:
         elements.append(detalhes_card)
         elements.append(Spacer(1, 20))
 
+        # Assinaturas
+
+        assinatura_label_style = ParagraphStyle(
+            'AssinaturaLabel',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=COR_CINZA_LABEL,
+            fontName="Helvetica-Bold",
+            alignment=TA_CENTER,
+            textTransform="uppercase"
+        )
+
+        assinatura_hint_style = ParagraphStyle(
+            'AssinaturaHint',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=COR_CINZA_LABEL,
+            alignment=TA_CENTER
+        )
+
+        # Bloco Gestor do Contrato
+        gestor_elements = [
+            Paragraph("GESTOR DO CONTRATO", assinatura_label_style),
+            Spacer(1, 22*mm),  # espaço para assinatura manual
+            HRFlowable(width="80%", thickness=1, color=COR_CINZA_MEDIO, spaceBefore=0, spaceAfter=4),
+            Paragraph("Assinatura", assinatura_hint_style),
+        ]
+
+        # Bloco Responsável Técnico
+        responsavel_tecnico_elements = [
+            Paragraph("RESPONSÁVEL TÉCNICO", assinatura_label_style),
+            Spacer(1, 22*mm),  # espaço para assinatura manual
+            HRFlowable(width="80%", thickness=1, color=COR_CINZA_MEDIO, spaceBefore=0, spaceAfter=4),
+            Paragraph("Assinatura", assinatura_hint_style),
+        ]
+
+        assinatura_card_style = TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), COR_CINZA_CLARO),
+            ('BOX', (0, 0), (-1, -1), 1, COR_BORDA),
+            ('TOPPADDING', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ])
+
+        card_gestor = Table([[gestor_elements]], colWidths=[88*mm])
+        card_gestor.setStyle(assinatura_card_style)
+
+        card_responsavel_tecnico = Table([[responsavel_tecnico_elements]], colWidths=[88*mm])
+        card_responsavel_tecnico.setStyle(assinatura_card_style)
+
+        assinaturas_title = Paragraph("ASSINATURAS", style_card_title)
+
+        assinaturas_table = Table([
+            [assinaturas_title],
+            [Spacer(1, 2)],
+            [HRFlowable(width="100%", thickness=1, color=COR_BORDA)],
+            [Spacer(1, 8)],
+            [Table([[card_gestor, '', card_responsavel_tecnico]], colWidths=[88*mm, 4*mm, 88*mm])]
+        ], colWidths=[180*mm])
+
+        assinaturas_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, -1), COR_BRANCA),
+            ('BOX', (0, 0), (-1, -1), 1, COR_BORDA),
+            ('TOPPADDING', (0, 0), (-1, -1), 15),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+            ('LEFTPADDING', (0, 0), (-1, -1), 15),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 15),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+
+        elements.append(assinaturas_table)
+        elements.append(Spacer(1, 20))
+
         # =========================
         # 5. OBSERVAÇÕES DINÂMICAS
         # =========================
