@@ -1,5 +1,6 @@
 from enum import Enum
 from uuid import UUID
+from datetime import datetime
 from domain.entities.locais import Local
 
 class Prioridade(Enum):
@@ -24,7 +25,8 @@ class Solicitacao():
                  status: Status = Status.CRIADO,
                  informacoes_adicionais: str = None, 
                  id: UUID = None,
-                 ordem_servico: int = None):
+                 ordem_servico: int = None,
+                 created_date: datetime = None):
         self.local = local
         self.assunto = assunto
         self.status = status
@@ -37,6 +39,7 @@ class Solicitacao():
         self.id = id
         self.ordem_servico = ordem_servico
         self.nome_da_unidade = nome_da_unidade
+        self.created_date = created_date
         self.deleted = False
 
 

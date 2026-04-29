@@ -83,7 +83,8 @@ class Solicitacao(Base):
             informacoes_adicionais=self.informacoes_adicionais,
             id=self.id,
             ordem_servico=self.ordem_servico,
-            nome_da_unidade=self.nome_da_unidade
+            nome_da_unidade=self.nome_da_unidade,
+            created_date=self.created_date
         )
     
 class AnexoSolicitacao(Base):

@@ -632,10 +632,24 @@ class EmailProvider:
         # =========================
         # 6. RODAPÉ
         # =========================
+        from datetime import timezone, timedelta
+        fuso_brasilia = timezone(timedelta(hours=-3))
+        
+        # Data de criação da solicitação
+        data_criacao = solicitacao.created_date or data_hora_atual
+        if data_criacao.tzinfo is None:
+            # Se for naive, assumimos UTC e convertemos para Brasília
+            data_criacao = data_criacao.replace(tzinfo=timezone.utc)
+        
+        data_criacao_br = data_criacao.astimezone(fuso_brasilia)
+        data_criacao_str = data_criacao_br.strftime('%d/%m/%Y')
+        hora_criacao_str = data_criacao_br.strftime('%H:%M:%S')
+
         elements.append(HRFlowable(width="100%", thickness=1, color=COR_BORDA, spaceBefore=0, spaceAfter=10))
         elements.append(Paragraph(
             f"Documento gerado eletronicamente pelo Sistema de Solicitações Arcaika Engenharia.<br/>"
-            f"Gerado em {data_hora_atual.strftime('%d/%m/%Y')} às {data_hora_atual.strftime('%H:%M:%S')}.",
+            f"Solicitação criada em {data_criacao_str} às {hora_criacao_str} (Horário de Brasília).<br/>"
+            f"PDF gerado em {data_hora_atual.strftime('%d/%m/%Y')} às {data_hora_atual.strftime('%H:%M:%S')}.",
             style_footer
         ))
 
