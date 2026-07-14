@@ -7,7 +7,7 @@ from domain.entities.user import Roles
 from domain.entities.solicitacao import Status
 from uuid import UUID
 from infra.providers import EmailProvider, StorageProvider
-from fastapi_limiter.depends import RateLimiter
+from infra.web.rate_limit import ResilientRateLimiter as RateLimiter
 from logging import getLogger
 from infra.workers.anexos import processar_anexos_job
 from infra.workers.fila import fila_upload

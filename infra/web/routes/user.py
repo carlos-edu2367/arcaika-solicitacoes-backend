@@ -6,7 +6,7 @@ from infra.providers import TokenProvider
 from infra.db.repos import UserDomain
 from infra.web.auth import get_current_user
 from domain.entities.user import Roles
-from fastapi_limiter.depends import RateLimiter
+from infra.web.rate_limit import ResilientRateLimiter as RateLimiter
 from logging import getLogger
 
 logger = getLogger(__name__)

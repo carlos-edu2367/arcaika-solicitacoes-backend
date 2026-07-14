@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi_limiter.depends import RateLimiter
+from infra.web.rate_limit import ResilientRateLimiter as RateLimiter
 from infra.web.dependencies import get_local_user_service, get_solicitacao_service, LocalUserService, SolicitacaoService
 from infra.web.auth import get_current_local_user, LocalUserDomain
 from application.dtos.solicitacao import SolicitacaoDisplay, UpdateSolicitacaoDTO, Prioridade
