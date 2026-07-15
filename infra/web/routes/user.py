@@ -62,17 +62,17 @@ async def change_password(dtos: ChangePassword, local_user_service: LocalUserSer
                           user_service: UserService = Depends(get_user_service)):
     if dtos.new_password == dtos.old_password:
         raise HTTPException(status_code=400, detail="As senhas não podem ser iguais")
-    if dtos.role == Roles.ADMIN.value or dtos.role == Roles.CLIENTE.value:
+    if dtos.role.value in (Roles.ADMIN.value, Roles.CLIENTE.value):
         # user
         user = await user_service.user_repo.get_by_email(dtos.email)
-        if not user_service.hash_provider.verify(user.senha_hash, dtos.old_password):
+        if not user or not user_service.hash_provider.verify(user.senha_hash, dtos.old_password):
             raise HTTPException(status_code=400, detail="Senha incorreta")
         await user_service.update_senha(user, dtos.new_password)
         return
     
     # local user
     user = await local_user_service.local_user_repo.get_by_email(dtos.email)
-    if not local_user_service.hash.verify(user.senha_hash, dtos.old_password):
+    if not user or not local_user_service.hash.verify(user.senha_hash, dtos.old_password):
         raise HTTPException(status_code=400, detail="Senha incorreta")
     await local_user_service.update_senha(user, dtos.new_password)
     return

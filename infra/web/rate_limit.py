@@ -1,10 +1,10 @@
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import RateLimiter
-from redis.exceptions import NoScriptError
+from redis.exceptions import ConnectionError as RedisConnectionError, NoScriptError
 
 
 class ResilientRateLimiter(RateLimiter):
-    """Reload the limiter script if Redis evicts its script cache."""
+    """Recover from Redis script eviction and one dropped connection."""
 
     async def _check(self, key):
         try:
@@ -12,4 +12,6 @@ class ResilientRateLimiter(RateLimiter):
         except NoScriptError:
             redis = FastAPILimiter.redis
             FastAPILimiter.lua_sha = await redis.script_load(FastAPILimiter.lua_script)
+            return await super()._check(key)
+        except RedisConnectionError:
             return await super()._check(key)

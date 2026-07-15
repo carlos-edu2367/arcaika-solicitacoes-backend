@@ -59,7 +59,7 @@ class UserRepositoryINFRA(repo.UserRepo):
             self.session.add(user_orm)
             return
         
-        stmt = select(UserORM).where(UserORM.id == id)
+        stmt = select(UserORM).where(UserORM.id == user.id)
         result = await self.session.execute(stmt)
         user_orm = result.scalar_one_or_none()
         if not user_orm:
