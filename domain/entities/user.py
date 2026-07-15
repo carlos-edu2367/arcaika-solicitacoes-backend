@@ -14,6 +14,7 @@ class User():
         self.role = role
         self.id = id
 
+    @staticmethod
     def validate_password_strenght(password: str):
         if len(password) < 6:
             return DomainError("Password is weak")
